@@ -12,20 +12,18 @@ from datetime import datetime, date, timedelta
 from enum import Enum
 
 
-SALT_SIZE = 10001 	# Number of potential salt values
-RECEIPT_LEN = 16	# Size of receipt
-BYTE_LEN_RAND = 16  # Size of randomness for random prefix to SHA256 input in generating receipt
+SALT_SIZE = 10001   # Number of potential salt values
+RECEIPT_LEN = 16  # Size of receipt
+BYTE_LEN_RAND = 16  # Size of randomness for random prefix to SHA256 input in generating receipt 
 
-# Receipt types
+# Receipt types 
 class ReceiptType(Enum):
   HOUR = 0          # Values of this type are datetime objects
-  ZIPCODE = 1       # Values of this type are ZipCodeObjects defined below
+  ZIPCODE = 1       # Values of this type are ZipcodeObjects defined below
 
 class ZipcodeObject:
-  zipcode = 0       # Expected to be an integer
-  datetime = 0      # Expected to be a datetime object
   def __init__(self, zipcode, datetime):
-    self.zipcode = zipcode
+    self.zipcode = zipcode    
     self.datetime = datetime
 
 # ReceiptTable
@@ -34,10 +32,9 @@ class ZipcodeObject:
 # - receipts correspond to values and are given out to users upon completion of the survey
 # Should be kept private
 class ReceiptTable:
-  _receiptType = 0
-  _dict = {}
   def __init__(self, receiptType):
     self._receiptType = receiptType
+    self._dict = {}
   def __init__(self, receiptType, receiptDict):
     self._receiptType = receiptType
     self._dict = copy.deepcopy(receiptDict)
@@ -69,14 +66,14 @@ class ReceiptTable:
 
   # Returns a dictionary mapping values to receipts
   def getValueReceiptDict(self):
-    return self._dict
+    return self._dict  
 
-  # If values can be compared, will return a ReceiptTable that contains only the (value, receipt) pairs with values between valueStart and valueEnd
+  # If values can be compared, will return a ReceiptTable that contains only the (value, receipt) pairs with values between valueStart and valueEnd exclusive
   # Undefined behavior if values are incomparable
-  def getSubTable(self, valueStart, valueEnd):
+  def getSubTable(self, valueStart, valueEnd, k = None):
     newDict = {}
-    for value in sorted(self._dict.keys()):
-      if (valueStart <= value and value <= valueEnd):
+    for value in sorted(self._dict.keys(), key = k):
+      if ((valueStart < value) and (value < valueEnd)):
         newDict[value] = self._dict[value]
     return ReceiptTable(self._receiptType, newDict)
 
@@ -87,11 +84,10 @@ class ReceiptTable:
 # - codes are hashes of the receipts for the corresponding value
 # Can be given out publicly
 class VerificationTable:
-  _receiptType = 0          # Type of values stored in the verification table
-  _valueToCodeDict = {}
-  _codeToValueDict = {}
   def __init__(self, receiptType):
-    self._receiptType = receiptType
+    self._receiptType = receiptType # Type of values stored in the verification table
+    self._valueToCodeDict = {}
+    self._codeToValueDict = {}
   def getType():
     return self._receiptType
   def addValueCodePair(self, value, code):
@@ -113,7 +109,7 @@ class VerificationTable:
   def getValueFromCode(self, code):
     if (code in self._codeToValueDict.keys()):
       return self._codeToValueDict[code]
-    return None
+    return None  
 
   # Returns an unsorted list of all values in the table
   def getValueList(self):
@@ -129,28 +125,28 @@ class VerificationTable:
 
   # If values can be compared, will return a list of (value, code) pairs, sorted by value
   # Undefined behavior if values are incomparable
-  def getSortedValueCodeList(self):
+  def getSortedValueCodeList(self, k = None):
     lst = []
-    for value in sorted(self._valueToCodeDict.keys()):
+    for value in sorted(self._valueToCodeDict.keys(), key = k):
       lst.append((value, self._valueToCodeDict[value]))
-    return lst
+    return lst   
 
-  # If values can be compared, will return a list of (value, code) pairs with values between valueStart and valueEnd, sorted by value
+  # If values can be compared, will return a list of (value, code) pairs with values between valueStart and valueEnd exclusive, sorted by value
   # Undefined behavior if values are incomparable
-  def getSortedValueCodeList(self, valueStart, valueEnd):
+  def getSortedValueCodeList(self, valueStart, valueEnd, k = None):
     lst = []
-    for value in sorted(self._valueToCodeDict.keys()):
-      if (valueStart <= value and value <= valueEnd):
+    for value in sorted(self._valueToCodeDict.keys(), key = k):
+      if ((valueStart < value) and (value < valueEnd)):
         lst.append((value, self._valueToCodeDict[value]))
-    return lst
+    return lst   
 
-  # If values can be compared, will return a VerificationTable that contains only the (value, code) pairs with values between valueStart and valueEnd
+  # If values can be compared, will return a VerificationTable that contains only the (value, code) pairs with values between valueStart and valueEnd exclusive
   # Undefined behavior if values are incomparable
-  def getSubTable(self, valueStart, valueEnd):
+  def getSubTable(self, valueStart, valueEnd, k = None):
     table = VerificationTable(self._receiptType)
-    for value in sorted(self._valueToCodeDict.keys()):
-      if (valueStart <= value and value <= valueEnd):
-        table.addValueCodePair((value, self._valueToCodeDict[value]))
+    for value in sorted(self._valueToCodeDict.keys(), key = k):
+      if ((valueStart <= value) and (value <= valueEnd)):
+        table.addValueCodePair(value, self._valueToCodeDict[value])
     return table
 
 
