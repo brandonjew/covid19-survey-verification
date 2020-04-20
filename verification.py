@@ -8,6 +8,7 @@ from enum import Enum
 # Number of potential salt values
 SALT_SIZE = 10001
 BYTE_LEN_RAND = 16
+RECEIPT_LEN = 16
 
 # Receipt types
 class ReceiptType(Enum):
@@ -37,15 +38,21 @@ def randBytesGenerator(k):
   return secrets.token_bytes(k)
 
 
-def hashInputFormat(receiptType, hourStr, dateStr):
+def hashInputFormat(receiptType, hour, date):
   r = randBytesGenerator(BYTE_LEN_RAND)
   sha = hashlib.sha256()
   if (receiptType == ReceiptType.HOUR):
-      sha.update(receiptType, r, hour, date)
+      sha.update(b'0')
+      sha.update(r)
+      sha.update(bytes(str.encode(hour)))
+      sha.update(bytes(str.encode(date)))
   elif (receiptType == ReceiptType.ZIPCODE):
-    sha.update(receiptType, r, hour, date)
+      sha.update(b'1')
+      sha.update(r)
+      sha.update(bytes(str.encode(hour)))
+      sha.update(bytes(str.encode(date)))
   code = sha.hexdigest()
-  return code[:16]
+  return code[:RECEIPT_LEN]
 
 # Creates a dictionary of hash codes for the day
 # hashDict[type][hash] = hour of verifying code
@@ -73,4 +80,4 @@ if __name__ == "__main__":
     print(getCurrentDate())
     print(randSaltGenerator())
     print(randBytesGenerator(16))
-    print(hashInputFormat(0, getCurrentHour(), getCurrentDate()))
+    print(hashInputFormat(ReceiptType.HOUR, getCurrentHour(), getCurrentDate()))
