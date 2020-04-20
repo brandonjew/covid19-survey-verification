@@ -38,7 +38,7 @@ def randBytesGenerator(k):
   return secrets.token_bytes(k)
 
 
-def hashInputFormat(receiptType, hour, date):
+def generateReceipt(receiptType, hour, date):
   r = randBytesGenerator(BYTE_LEN_RAND)
   sha = hashlib.sha256()
   if (receiptType == ReceiptType.HOUR):
@@ -80,4 +80,4 @@ if __name__ == "__main__":
     print(getCurrentDate())
     print(randSaltGenerator())
     print(randBytesGenerator(16))
-    print(hashInputFormat(ReceiptType.HOUR, getCurrentHour(), getCurrentDate()))
+    print(generateReceipt(ReceiptType.HOUR, getCurrentHour(), getCurrentDate()))
