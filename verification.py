@@ -7,24 +7,25 @@ import argparse
 import hashlib, base64
 import secrets
 import copy
+import itertools
 from datetime import datetime, date, timedelta
 from enum import Enum
 
 
 SALT_SIZE = 10001 	# Number of potential salt values
 RECEIPT_LEN = 16	# Size of receipt
-BYTE_LEN_RAND = 16  # Size of randomness for random prefix to SHA256 input in generating receipt 
+BYTE_LEN_RAND = 16  # Size of randomness for random prefix to SHA256 input in generating receipt
 
-# Receipt types 
+# Receipt types
 class ReceiptType(Enum):
   HOUR = 0          # Values of this type are datetime objects
   ZIPCODE = 1       # Values of this type are ZipCodeObjects defined below
 
-class ZipCodeObject:
+class ZipcodeObject:
   zipcode = 0       # Expected to be an integer
   datetime = 0      # Expected to be a datetime object
   def __init__(self, zipcode, datetime):
-    self.zipcode = zipcode    
+    self.zipcode = zipcode
     self.datetime = datetime
 
 # ReceiptTable
@@ -68,7 +69,7 @@ class ReceiptTable:
 
   # Returns a dictionary mapping values to receipts
   def getValueReceiptDict(self):
-    return self._dict  
+    return self._dict
 
   # If values can be compared, will return a ReceiptTable that contains only the (value, receipt) pairs with values between valueStart and valueEnd
   # Undefined behavior if values are incomparable
@@ -83,7 +84,7 @@ class ReceiptTable:
 # VerificationTable
 # Keeps track of (value, code) mappings
 # - values are instances of the appropriate ReceiptType (e.g. the datetime object of the corresponding hour)
-# - codes are hashes of the receipts for the corresponding value 
+# - codes are hashes of the receipts for the corresponding value
 # Can be given out publicly
 class VerificationTable:
   _receiptType = 0          # Type of values stored in the verification table
@@ -112,7 +113,7 @@ class VerificationTable:
   def getValueFromCode(self, code):
     if (code in self._codeToValueDict.keys()):
       return self._codeToValueDict[code]
-    return None  
+    return None
 
   # Returns an unsorted list of all values in the table
   def getValueList(self):
@@ -132,7 +133,7 @@ class VerificationTable:
     lst = []
     for value in sorted(self._valueToCodeDict.keys()):
       lst.append((value, self._valueToCodeDict[value]))
-    return lst   
+    return lst
 
   # If values can be compared, will return a list of (value, code) pairs with values between valueStart and valueEnd, sorted by value
   # Undefined behavior if values are incomparable
@@ -141,7 +142,7 @@ class VerificationTable:
     for value in sorted(self._valueToCodeDict.keys()):
       if (valueStart <= value and value <= valueEnd):
         lst.append((value, self._valueToCodeDict[value]))
-    return lst   
+    return lst
 
   # If values can be compared, will return a VerificationTable that contains only the (value, code) pairs with values between valueStart and valueEnd
   # Undefined behavior if values are incomparable
@@ -172,8 +173,8 @@ def randSaltGenerator():
   secretsGenerator = secrets.SystemRandom()
   randSalt = secretsGenerator.randint(0, SALT_SIZE)
   return randSalt
- 
-# Generates a receipt of size RECEIPT_LEN for the given value 
+
+# Generates a receipt of size RECEIPT_LEN for the given value
 def generateReceipt(receiptType, value, randBytesGenerator):
   r = randBytesGenerator.getNextRandBytes(BYTE_LEN_RAND)
   sha = hashlib.sha256()
@@ -191,19 +192,23 @@ def generateReceipt(receiptType, value, randBytesGenerator):
   return code[:RECEIPT_LEN]
 
 
-def allHours(numHoursInFuture, startdate = datetime.now()):
-  startdate.replace(minute = 0, second = 0, microsecond = 0)
-  hour = timedelta(hours = 1)
-  return [startdate + (hour * k) for k in range(numHoursInFuture)]
-  
-# For ReceiptType.HOUR only 
+# For ReceiptType.HOUR only
 # Generates a ReceiptTable of (datetime, receipt) pairs for each hour over numDays starting from startDate
 # Should be run once
-def generateHourReceiptTable(numDays, startdate = datetime.now()):
+def generateHourReceiptTable(randBytesGenerator, numDays, startdate = datetime.now()):
   numHours = numDays * 24
-  dateList = allHours(numHours, startdate)
-  randBytesGenerator = RandBytesGenerator(os.path.join(sys.path[0], "randomSeed.txt"))
+  hour = timedelta(hours = 1)
+  dateList = [startdate + (hour * k) for k in range(numHours)]
   return ReceiptTable(ReceiptType.HOUR, {d:generateReceipt(ReceiptType.HOUR, d, randBytesGenerator) for d in dateList})
+
+# For ReceiptType.ZIPCODE only
+# Generates a ReceiptTable of (ZipcodeObject, receipt) pairs for each zipcode in zipcodeList over numDays starting from startDate
+# Should be run once
+def generateZipcodeReceiptTable(randBytesGenerator, numDays, zipcodeList, startdate = datetime.now()):
+  startdate.replace(minute = 0, second = 0, microsecond = 0)
+  dateList = [startdate + (k * timedelta(days = 1)) for k in range(numDays)]
+  allPairsZipcodesDates = list(itertools.product(zipcodeList, dateList))
+  return ReceiptTable(ReceiptType.ZIPCODE, {ZipcodeObject(z, d):generateReceipt(ReceiptType.ZIPCODE, ZipcodeObject(z, d), randBytesGenerator) for (z, d) in allPairsZipcodesDates})
 
 # Generates a VerificationTable from the ReceiptTable
 # Should be run once after the ReceiptTable is generated
@@ -235,21 +240,20 @@ if __name__ == "__main__":
   parser_args = parser.parse_args()
 
   # Testing
-  dates = generateHourReceiptTable(1)
+  randBytesGenerator = RandBytesGenerator(os.path.join(sys.path[0], "randomSeed.txt"))
+  dates = generateHourReceiptTable(randBytesGenerator, 100)
   table = generateVerificationTable(ReceiptType.HOUR, dates)
   print((dates.getReceiptList())[0])
   print(verifyReceipt((dates.getReceiptList())[0], table))
   #print(table.getCodeValueList())
 
-  randBytesGenerator = RandBytesGenerator(os.path.join(sys.path[0], "randomSeed.txt"))
-  zipc = ZipCodeObject(12345, datetime.now())
-  receipt = generateReceipt(ReceiptType.ZIPCODE, ZipCodeObject(12345, datetime.now()), randBytesGenerator)
+  zipc = ZipcodeObject(12345, datetime.now())
+  receipt = generateReceipt(ReceiptType.ZIPCODE, ZipcodeObject(12345, datetime.now()), randBytesGenerator)
   table2 = generateVerificationTable(ReceiptType.ZIPCODE, ReceiptTable(ReceiptType.ZIPCODE, {zipc: receipt}))
   print(receipt, table2)
   print(verifyReceipt(receipt, table2).zipcode)
-    
-    
-    
-    
-    
-    
+
+  # Zipcode Test
+  zipcodeList = [12345, 12346, 12347]
+  zipcodeReceiptTable = generateZipcodeReceiptTable(randBytesGenerator, 1, zipcodeList)
+  print(zipcodeReceiptTable.getReceiptList())
