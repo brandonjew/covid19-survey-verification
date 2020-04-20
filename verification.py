@@ -45,14 +45,17 @@ def SAMPLE_verify_receipts(hourReceipt, zipcodeReceipt, hourVerificationTable, z
   zipcodeVerify = verifyReceipt(zipcodeReceipt, zipcodeVerificationTable)
   return (hourVerify, zipcodeVerify)
 
-#4) Generate a subtable of the hourVerificationTable that contains codes for a single day
-# This can be given out daily to verifiers
-def SAMPLE_generate_hour_verification_subtables_for_day(hourVerificationTable, date):
+#4) Generate subtables of hourVerificationTable and zipcodeVerificationTable that contain only the codes for the given day
+# These subtables can be given out daily to verifiers
+def SAMPLE_generate_verification_subtables_for_day(hourVerificationTable, zipcodeVerificationTable, date):
   date = date.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
   deltaDay = timedelta(days = 1)
   endDate = date + deltaDay
-  subVerificationTable = hourVerificationTable.getSubTable(date, endDate)
-  return subVerificationTable
+  hourVerificationSubtable = hourVerificationTable.getSubTable(date, endDate)
+  zipcodeVerificationSubtable = zipcodeVerificationTable.getSubTable(date, endDate, lambda zipcodeObj: zipcodeObj.datetime)
+  return hourVerificationSubtable, zipcodeVerificationSubtable
+
+# Note that the data in any ReceiptTable or VerificationTable can be converted to a list of tuples using getValueReceiptList() and getValueCodeList() respectively.
 #################################################################################################
 #################################################################################################
 
@@ -122,7 +125,10 @@ class ReceiptTable:
   def getSubTable(self, valueStart, valueEnd, sortKey = None):
     newDict = {}
     for value in sorted(self._dict.keys(), key = sortKey):
-      if ((valueStart <= value) and (value < valueEnd)):
+      sortValue = value
+      if (sortKey != None):
+          sortValue = sortKey(value)
+      if ((valueStart <= sortValue) and (sortValue < valueEnd)):
         newDict[value] = self._dict[value]
     return ReceiptTable(self._receiptType, newDict)
 
@@ -184,7 +190,10 @@ class VerificationTable:
   def getSortedValueCodeList(self, valueStart, valueEnd, sortKey = None):
     lst = []
     for value in sorted(self._valueToCodeDict.keys(), key = sortKey):
-      if ((valueStart <= value) and (value < valueEnd)):
+      sortValue = value
+      if (sortKey != None):
+        sortValue = sortKey(value)
+      if ((valueStart <= sortValue) and (sortValue < valueEnd)):
         lst.append((value, self._valueToCodeDict[value]))
     return lst   
 
@@ -193,7 +202,10 @@ class VerificationTable:
   def getSubTable(self, valueStart, valueEnd, sortKey = None):
     table = VerificationTable(self._receiptType)
     for value in sorted(self._valueToCodeDict.keys(), key = sortKey):
-      if ((valueStart <= value) and (value < valueEnd)):
+      sortValue = value
+      if (sortKey != None):
+        sortValue = sortKey(value)
+      if ((valueStart <= sortValue) and (sortValue < valueEnd)):
         table.addValueCodePair(value, self._valueToCodeDict[value])
     return table
 
@@ -289,24 +301,25 @@ if __name__ == "__main__":
   hverify, zverify = SAMPLE_verify_receipts(hreceipt, zreceipt, hv, zv)
   print(hverify)
   print(zverify.zipcode, zverify.datetime)
-  hsv = SAMPLE_generate_hour_verification_subtables_for_day(hv, datetime.now())
+  hsv, zsv = SAMPLE_generate_verification_subtables_for_day(hv, zv, datetime.now())
   #print(hsv.getValueCodeList())
+  print([(z.zipcode, z.datetime, v) for (z, v) in zsv.getValueCodeList()])
   
   # More test code
-  randBytesGenerator = RandBytesGenerator(os.path.join(sys.path[0], "randomSeed.txt"))
-  dates = generateHourReceiptTable(randBytesGenerator, 100)
-  table = generateVerificationTable(ReceiptType.HOUR, dates)
-  print((dates.getReceiptList())[0])
-  print(verifyReceipt((dates.getReceiptList())[0], table))
+  #randBytesGenerator = RandBytesGenerator(os.path.join(sys.path[0], "randomSeed.txt"))
+  #dates = generateHourReceiptTable(randBytesGenerator, 100)
+  #table = generateVerificationTable(ReceiptType.HOUR, dates)
+  #print((dates.getReceiptList())[0])
+  #print(verifyReceipt((dates.getReceiptList())[0], table))
 
-  zipc = ZipcodeObject(12345, datetime.now())
-  receipt = generateReceipt(ReceiptType.ZIPCODE, ZipcodeObject(12345, datetime.now()), randBytesGenerator)
-  table2 = generateVerificationTable(ReceiptType.ZIPCODE, ReceiptTable(ReceiptType.ZIPCODE, {zipc: receipt}))
-  print(verifyReceipt(receipt, table2).zipcode)
+  #zipc = ZipcodeObject(12345, datetime.now())
+  #receipt = generateReceipt(ReceiptType.ZIPCODE, ZipcodeObject(12345, datetime.now()), randBytesGenerator)
+  #table2 = generateVerificationTable(ReceiptType.ZIPCODE, ReceiptTable(ReceiptType.ZIPCODE, {zipc: receipt}))
+  #print(verifyReceipt(receipt, table2).zipcode)
 
-  zipcodeList = [12345, 12346, 12347]
-  zipcodeReceiptTable = generateZipcodeReceiptTable(randBytesGenerator, 1, zipcodeList)
-  print(zipcodeReceiptTable.getReceiptList())
+  #zipcodeList = [12345, 12346, 12347]
+  #zipcodeReceiptTable = generateZipcodeReceiptTable(randBytesGenerator, 1, zipcodeList)
+  #print(zipcodeReceiptTable.getReceiptList())
 
 
     
