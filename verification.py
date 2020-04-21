@@ -212,9 +212,8 @@ class VerificationTable:
 
 # Stateful random bytes generator that uses the file given during initialization as its seed
 class RandBytesGenerator():
-  _state = 0
-  _secretsGenerator = 0
   def __init__(self, randSeedFileName):
+    self._state = 0
     with open(randSeedFileName, 'r') as f:
       self._state = f.read().encode()
     self._secretsGenerator = secrets.SystemRandom()
