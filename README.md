@@ -12,6 +12,9 @@ This command will generate a directory `tables` in the main repository directory
 These will be loaded to get and verify receipts.
 Note that this will generate the tables for the next 100 days and cannot be run if the `tables` directory already exists to avoid breaking existing receipts.
 
+** The `tables/receipt` directory must be kept private!! **
+
+The `tables/verification` daily files can be shared but note that somebody may be able to identify valid receipts by brute force if they have these tables (especially the combined table)
 
 ## Getting receipts
 
