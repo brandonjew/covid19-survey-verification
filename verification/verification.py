@@ -9,7 +9,111 @@ import copy
 import itertools
 from datetime import datetime, date, timedelta
 from enum import Enum
+import pickle
 
+_table_dir = "./tables"
+_vtable_prefix = f"{_table_dir}/verification/"
+_rtable_prefix = f"{_table_dir}/receipt/"
+
+""" Generates tables for verification system
+
+Args:
+    numDays: Number of days for tables to be valid
+Returns:
+    Tuple of hourReceiptTable and hourVerificationTable
+"""
+def generate_receipt_and_verification_tables(randomSeedPath, numDays=100):
+  startdate = datetime.now()
+  startdate = startdate.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
+  randBytesGenerator = RandBytesGenerator(randomSeedPath)
+  hourReceiptTable = generateHourReceiptTable(randBytesGenerator, numDays, startdate)
+  hourVerificationTable = generateVerificationTable(ReceiptType.HOUR, hourReceiptTable)
+  return (hourReceiptTable, hourVerificationTable, startdate, numDays)
+
+"""Splits tables from generate_receipt_and_verification_tables() output into daily units"""
+def generate_daily_subtables(hourReceiptTable, hourVerificationTable, startdate, numDays):
+  subtables = []
+  for i in range(numDays):
+    date = startdate + timedelta(days = i)
+    deltaDay = timedelta(days = 1)
+    endDate = date + deltaDay
+    hourVerificationSubtable = copy.deepcopy(hourVerificationTable).getSubTable(date, endDate)
+    hourReceiptSubtable = copy.deepcopy(hourReceiptTable).getSubTable(date, endDate)
+    subtables.append((hourVerificationSubtable, hourReceiptSubtable, date.strftime("%Y-%m-%d")))
+  return subtables
+
+"""Saves subtables to appropriate directories
+
+The subtables will be saved as "YYYY-MM-DD.pkl"
+The combined verification table will be stored as "
+We should think of ways to make sure these aren't tampered with.
+Returns tuples of path strings for vtable and rtable respectively
+"""
+def pickle_tables_and_subtables(hourReceiptTable, hourVerificationTable, subtables):
+  try:
+      os.mkdir(_table_dir)
+  except FileExistsError:
+      raise Exception("Table directory already exists, please back up the existing tables and remove them")
+  os.mkdir(_vtable_prefix)
+  os.mkdir(_rtable_prefix)
+  paths = []
+  vtable_path = f"{_vtable_prefix}/all.pkl"
+  rtable_path = f"{_rtable_prefix}/all.pkl"
+  paths.append((vtable_path, rtable_path))
+  with open(vtable_path, 'wb') as vtable_pkl:
+    pickle.dump(hourVerificationTable, vtable_pkl)
+  with open(rtable_path, 'wb') as rtable_pkl:
+    pickle.dump(hourReceiptTable, rtable_pkl)
+  for subtable in subtables:
+    datestr = subtable[2]
+    vtable_path = "{vtable_prefix}/{datestr}.pkl".format(vtable_prefix=_vtable_prefix, datestr=datestr)
+    rtable_path = "{rtable_prefix}/{datestr}.pkl".format(rtable_prefix=_rtable_prefix, datestr=datestr)
+    paths.append((vtable_path, rtable_path))
+    with open(vtable_path, 'wb') as vtable_pkl:
+      pickle.dump(subtable[0], vtable_pkl)
+    with open(rtable_path, 'wb') as rtable_pkl:
+      pickle.dump(subtable[1], rtable_pkl)
+  print("Saved tables for {startdate} to {enddate}".format(startdate=subtables[0][2],
+                                                           enddate=subtables[-1][2]))
+  print("After this date range, this script must be run again after backing up and removing existing tables")
+  print("This will render previous receipts invalid unless a system can check the backup as well.")
+  return paths
+
+
+""" Generates receipt for current time
+
+Loads daily receipt table. Will raise error if table not generated yet.
+
+Returns:
+    hourReceipt
+"""
+def generate_receipt():
+  date = datetime.now()
+  date = date.replace(minute = 0, second = 0, microsecond = 0)
+  datestr = date.strftime("%Y-%m-%d")
+  rtable_path = "{rtable_prefix}/{datestr}.pkl".format(rtable_prefix=_rtable_prefix, datestr=datestr)
+  if not os.path.exists(rtable_path):
+    raise Exception("Receipt table for {datestr} not found".format(datestr=datestr))
+  with open(rtable_path, 'rb') as rtable_pkl:
+    hourReceiptTable = pickle.load(rtable_pkl)
+  hourReceipt = hourReceiptTable.getReceiptFromValue(date)
+  return hourReceipt
+
+
+""" Verifies a receipt
+Args:
+    hourReceipt: A receipt given to a user
+Returns:
+    verification
+"""
+def verify_receipt(hourReceipt):
+  vtable_path = f"{_vtable_prefix}/all.pkl"
+  if not os.path.exists(vtable_path):
+    raise Exception("Verification table not found.")
+  with open(vtable_path, 'rb') as vtable_pkl:
+    hourVerificationTable = pickle.load(vtable_pkl)
+  hourVerify = verifyReceipt(hourReceipt, hourVerificationTable)
+  return hourVerify
 #################################################################################################
 #################################################################################################
 # Sample Usage
@@ -294,6 +398,7 @@ def verifyReceipt(receipt, verificationTable):
 if __name__ == "__main__":
 
   # Test code
+  print("Running tests")
   hr, hv, zr, zv = SAMPLE_generate_receipts_and_codes()
   hreceipt, zreceipt = SAMPLE_generate_receipts_for_users(hr, zr, 12345)
   print(hreceipt, zreceipt)
