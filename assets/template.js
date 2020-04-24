@@ -26,6 +26,28 @@ if (age < 0) {
 
 document.getElementById("square").className = squareColor; 
 
+var html = [
+  `<center>`,
+    `<br>`,
+    `<button onclick="changeTimeStyle()" class="rbutton">Toggle 12 or 24 hour</button>`,
+  `</center>`,
+  '<div class="footer">',
+    '<h1>About</h1>',
+    '<p>',
+    'This is a non-identifiable completion receipt for the STOPCOVID symptom survey.',
+    'It simply provides evidence of a survey completed at a given time.',
+    '</p>',
+    '<p>Color coding indicates age of receipt at time of page loading.</p>',
+    '<div class="color-box" style="background-color: #88CCEE;">Today</div>',
+    '<div class="color-box" style="background-color: #DDCC77;">This Week</div>',
+    '<div class="color-box" style="background-color: #CC6677;">Older</div>',
+  '</div>'
+].join('');
+
+var div = document.createElement('div');
+div.setAttribute('class', 'post block bc2');
+div.innerHTML = html;
+document.getElementById('jsfooter').appendChild(div);
 
 var options = {
   year: 'numeric',
@@ -45,3 +67,4 @@ function changeTimeStyle() {
   document.getElementById("keydate").textContent = new Intl.DateTimeFormat('default', options).format(receiptDate);
   document.getElementById("now").textContent = new Intl.DateTimeFormat('default', options).format(date);
 }
+

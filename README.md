@@ -1,6 +1,7 @@
 # Simple Survey Receipt Verification
 
 Requires Python 3 and all scripts should be run from the main repository directory
+Also requires Jinja2 for rendering the HTML files.
 
 ## Generating Tables
 

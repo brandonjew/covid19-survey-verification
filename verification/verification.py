@@ -10,10 +10,13 @@ import itertools
 from datetime import datetime, date, timedelta
 from enum import Enum
 import pickle
+import shutil
+from jinja2 import Template
 
 _table_dir = "./tables"
 _vtable_prefix = f"{_table_dir}/verification/"
 _rtable_prefix = f"{_table_dir}/receipt/"
+_template_path = "./assets/template.html"
 
 """ Generates tables for verification system
 
@@ -57,28 +60,35 @@ def pickle_tables_and_subtables(hourReceiptTable, hourVerificationTable, subtabl
       raise Exception("Table directory already exists, please back up the existing tables and remove them")
   os.mkdir(_vtable_prefix)
   os.mkdir(_rtable_prefix)
-  paths = []
+  os.mkdir(f"{_vtable_prefix}/pages/")
+  # Copy assets
+  shutil.copytree("./assets", f"{_vtable_prefix}/pages/assets")
   vtable_path = f"{_vtable_prefix}/all.pkl"
   rtable_path = f"{_rtable_prefix}/all.pkl"
-  paths.append((vtable_path, rtable_path))
   with open(vtable_path, 'wb') as vtable_pkl:
     pickle.dump(hourVerificationTable, vtable_pkl)
   with open(rtable_path, 'wb') as rtable_pkl:
     pickle.dump(hourReceiptTable, rtable_pkl)
   for subtable in subtables:
     datestr = subtable[2]
-    vtable_path = "{vtable_prefix}/{datestr}.pkl".format(vtable_prefix=_vtable_prefix, datestr=datestr)
+    #vtable_path = "{vtable_prefix}/{datestr}.pkl".format(vtable_prefix=_vtable_prefix, datestr=datestr)
     rtable_path = "{rtable_prefix}/{datestr}.pkl".format(rtable_prefix=_rtable_prefix, datestr=datestr)
-    paths.append((vtable_path, rtable_path))
-    with open(vtable_path, 'wb') as vtable_pkl:
-      pickle.dump(subtable[0], vtable_pkl)
+    #with open(vtable_path, 'wb') as vtable_pkl:
+    #  pickle.dump(subtable[0], vtable_pkl)
+    for date, receipt in subtable[1].getValueReceiptList():
+      keydate = date.strftime("%Y-%m-%dT%H:%M:%SZ")
+      html_path = f"{_vtable_prefix}/pages/{receipt}.html"
+      with open(_template_path, "r") as template_file:
+          template = Template(template_file.read())
+      with open(html_path, 'w') as html_file:
+          html_file.write(template.render(keydate=keydate, receipt=receipt))
     with open(rtable_path, 'wb') as rtable_pkl:
       pickle.dump(subtable[1], rtable_pkl)
   print("Saved tables for {startdate} to {enddate}".format(startdate=subtables[0][2],
                                                            enddate=subtables[-1][2]))
   print("After this date range, this script must be run again after backing up and removing existing tables")
   print("This will render previous receipts invalid unless a system can check the backup as well.")
-  return paths
+  return None
 
 
 """ Generates receipt for current time
