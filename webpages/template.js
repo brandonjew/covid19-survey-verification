@@ -33,7 +33,7 @@ var options = {
   day: '2-digit',
   hour: 'numeric',
   minute: 'numeric',
-  hour12: false,
+  hour12: true,
   timeZoneName: 'short',
 };
 
