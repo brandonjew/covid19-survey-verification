@@ -27,6 +27,9 @@ Get a receipt for right now with:
 
 This command will print out the receipt for the current hour
 
+Again, the webpage for this receipt can be found at:
+`tables/verification/pages/{receipt}.html`
+
 ## Verifying receipts
 
 Verify a receipt with:
@@ -34,3 +37,4 @@ Verify a receipt with:
 `python3 get_verification.py {receipt}`
 
 This will print the date and hour that the receipt is valid for or will print "Receipt not valid".
+This command will not be immediately necessary since receipts can be verified by the existence of a webpage.
