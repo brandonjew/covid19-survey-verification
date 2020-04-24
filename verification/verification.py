@@ -23,7 +23,8 @@ Returns:
     Tuple of hourReceiptTable and hourVerificationTable
 """
 def generate_receipt_and_verification_tables(randomSeedPath, numDays=100):
-  startdate = datetime.now()
+  #startdate = datetime.now()
+  startdate = datetime.utcnow()
   startdate = startdate.replace(hour = 0, minute = 0, second = 0, microsecond = 0)
   randBytesGenerator = RandBytesGenerator(randomSeedPath)
   hourReceiptTable = generateHourReceiptTable(randBytesGenerator, numDays, startdate)
@@ -88,7 +89,8 @@ Returns:
     hourReceipt
 """
 def generate_receipt():
-  date = datetime.now()
+  #date = datetime.now()
+  date = datetime.utcnow()
   date = date.replace(minute = 0, second = 0, microsecond = 0)
   datestr = date.strftime("%Y-%m-%d")
   rtable_path = "{rtable_prefix}/{datestr}.pkl".format(rtable_prefix=_rtable_prefix, datestr=datestr)

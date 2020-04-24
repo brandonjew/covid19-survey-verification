@@ -6,7 +6,7 @@ def main(hourReceipt):
     if (vstatus == None):
         print("Receipt not valid")
     else:
-        print(vstatus)
+        print(vstatus.strftime("%Y-%m-%dT%H:%M:%SZ"))
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
